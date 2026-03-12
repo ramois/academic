@@ -10,6 +10,8 @@ on:
 
 env:
   NODE_VERSION: '20'
+  # Opt-in to Node.js 24 for JavaScript actions (checkout, setup-node, upload-artifact)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   test-unit:
