@@ -181,6 +181,29 @@ npm run build
 npm run test
 ```
 
+### Tests e2e (Playwright)
+
+Los tests e2e cubren flujos completos con frontend y backend. **Antes de ejecutarlos** asegúrate de tener la app en marcha:
+
+```bash
+npm run dev
+```
+
+En otra terminal, desde la raíz del repo:
+
+```bash
+# Primera vez: descargar navegadores de Playwright
+npx playwright install
+
+# Ejecutar tests e2e (Chromium y Firefox)
+npm run test:e2e
+
+# Modo UI (depuración)
+npm run test:e2e:ui
+```
+
+La URL base por defecto es `http://localhost:5173`. Puedes cambiarla con `PLAYWRIGHT_BASE_URL`.
+
 ---
 
 ## Coverage (cobertura de código)

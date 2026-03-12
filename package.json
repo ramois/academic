@@ -10,6 +10,11 @@
     "dev:backend": "npm run start:dev -w packages/backend",
     "dev:frontend": "npm run dev -w packages/frontend",
     "test": "npm run test --workspaces --if-present",
-    "test:coverage": "npm run test:cov -w packages/backend && npm run test:coverage -w packages/frontend"
+    "test:coverage": "npm run test:cov -w packages/backend && npm run test:coverage -w packages/frontend",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
   }
 }

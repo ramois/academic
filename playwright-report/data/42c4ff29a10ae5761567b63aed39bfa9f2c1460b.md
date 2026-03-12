@@ -1,0 +1,138 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Sistema Académico" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e9]
+        - heading "Sistema Académico" [level=1] [ref=e11]
+      - generic [ref=e12]:
+        - generic [ref=e15]: admin
+        - button "Cerrar sesión" [ref=e16]
+  - generic [ref=e17]:
+    - complementary [ref=e18]:
+      - navigation "Menú principal" [ref=e19]:
+        - link "Usuarios" [ref=e20] [cursor=pointer]:
+          - /url: /usuarios
+        - link "Estudiantes" [ref=e21] [cursor=pointer]:
+          - /url: /estudiantes
+        - link "Cursos" [ref=e22] [cursor=pointer]:
+          - /url: /cursos
+        - link "Horarios" [ref=e23] [cursor=pointer]:
+          - /url: /horarios
+    - main [ref=e24]:
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - heading "Estudiantes" [level=2] [ref=e28]
+          - button "Agregar estudiante" [ref=e29]
+        - table [ref=e31]:
+          - rowgroup [ref=e32]:
+            - row "Código Nombre Apellidos Usuario Email Documento Fecha de nacimiento Acciones" [ref=e33]:
+              - columnheader "Código" [ref=e34]
+              - columnheader "Nombre" [ref=e35]
+              - columnheader "Apellidos" [ref=e36]
+              - columnheader "Usuario" [ref=e37]
+              - columnheader "Email" [ref=e38]
+              - columnheader "Documento" [ref=e39]
+              - columnheader "Fecha de nacimiento" [ref=e40]
+              - columnheader "Acciones" [ref=e41]
+          - rowgroup [ref=e42]:
+            - row "ALUMNO-00001 Juan Pérez jperez jperez@academic.local 12345678 14/5/2000 Editar Eliminar" [ref=e43]:
+              - cell "ALUMNO-00001" [ref=e44]
+              - cell "Juan" [ref=e45]
+              - cell "Pérez" [ref=e46]
+              - cell "jperez" [ref=e47]
+              - cell "jperez@academic.local" [ref=e48]
+              - cell "12345678" [ref=e49]
+              - cell "14/5/2000" [ref=e50]
+              - cell "Editar Eliminar" [ref=e51]:
+                - generic [ref=e52]:
+                  - button "Editar" [ref=e53]
+                  - button "Eliminar" [ref=e54]
+            - row "ALUMNO-00002 Omar Gutierrez Condori ogutierrez omar@gmail.com 1231233 10/3/1984 Editar Eliminar" [ref=e55]:
+              - cell "ALUMNO-00002" [ref=e56]
+              - cell "Omar" [ref=e57]
+              - cell "Gutierrez Condori" [ref=e58]
+              - cell "ogutierrez" [ref=e59]
+              - cell "omar@gmail.com" [ref=e60]
+              - cell "1231233" [ref=e61]
+              - cell "10/3/1984" [ref=e62]
+              - cell "Editar Eliminar" [ref=e63]:
+                - generic [ref=e64]:
+                  - button "Editar" [ref=e65]
+                  - button "Eliminar" [ref=e66]
+            - row "ALUMNO-00003 E2E Usuario Prueba eusuario e2e-1773280574600@test.com E2E-1773280574600 13/5/2000 Editar Eliminar" [ref=e67]:
+              - cell "ALUMNO-00003" [ref=e68]
+              - cell "E2E" [ref=e69]
+              - cell "Usuario Prueba" [ref=e70]
+              - cell "eusuario" [ref=e71]
+              - cell "e2e-1773280574600@test.com" [ref=e72]
+              - cell "E2E-1773280574600" [ref=e73]
+              - cell "13/5/2000" [ref=e74]
+              - cell "Editar Eliminar" [ref=e75]:
+                - generic [ref=e76]:
+                  - button "Editar" [ref=e77]
+                  - button "Eliminar" [ref=e78]
+            - row "ALUMNO-00004 E2E Usuario Prueba eusuario1 e2e-1773280579962@test.com E2E-1773280579962 13/5/2000 Editar Eliminar" [ref=e79]:
+              - cell "ALUMNO-00004" [ref=e80]
+              - cell "E2E" [ref=e81]
+              - cell "Usuario Prueba" [ref=e82]
+              - cell "eusuario1" [ref=e83]
+              - cell "e2e-1773280579962@test.com" [ref=e84]
+              - cell "E2E-1773280579962" [ref=e85]
+              - cell "13/5/2000" [ref=e86]
+              - cell "Editar Eliminar" [ref=e87]:
+                - generic [ref=e88]:
+                  - button "Editar" [ref=e89]
+                  - button "Eliminar" [ref=e90]
+            - row "ALUMNO-00005 E2E Usuario Prueba eusuario2 e2e-1773281129028@test.com E2E-1773281129028 13/5/2000 Editar Eliminar" [ref=e91]:
+              - cell "ALUMNO-00005" [ref=e92]
+              - cell "E2E" [ref=e93]
+              - cell "Usuario Prueba" [ref=e94]
+              - cell "eusuario2" [ref=e95]
+              - cell "e2e-1773281129028@test.com" [ref=e96]
+              - cell "E2E-1773281129028" [ref=e97]
+              - cell "13/5/2000" [ref=e98]
+              - cell "Editar Eliminar" [ref=e99]:
+                - generic [ref=e100]:
+                  - button "Editar" [ref=e101]
+                  - button "Eliminar" [ref=e102]
+            - row "ALUMNO-00006 E2E Usuario Prueba eusuario3 e2e-1773281176527@test.com E2E-1773281176527 13/5/2000 Editar Eliminar" [ref=e103]:
+              - cell "ALUMNO-00006" [ref=e104]
+              - cell "E2E" [ref=e105]
+              - cell "Usuario Prueba" [ref=e106]
+              - cell "eusuario3" [ref=e107]
+              - cell "e2e-1773281176527@test.com" [ref=e108]
+              - cell "E2E-1773281176527" [ref=e109]
+              - cell "13/5/2000" [ref=e110]
+              - cell "Editar Eliminar" [ref=e111]:
+                - generic [ref=e112]:
+                  - button "Editar" [ref=e113]
+                  - button "Eliminar" [ref=e114]
+            - row "ALUMNO-00007 E2E Usuario Prueba eusuario4 e2e-1773281183626@test.com E2E-1773281183626 13/5/2000 Editar Eliminar" [ref=e115]:
+              - cell "ALUMNO-00007" [ref=e116]
+              - cell "E2E" [ref=e117]
+              - cell "Usuario Prueba" [ref=e118]
+              - cell "eusuario4" [ref=e119]
+              - cell "e2e-1773281183626@test.com" [ref=e120]
+              - cell "E2E-1773281183626" [ref=e121]
+              - cell "13/5/2000" [ref=e122]
+              - cell "Editar Eliminar" [ref=e123]:
+                - generic [ref=e124]:
+                  - button "Editar" [ref=e125]
+                  - button "Eliminar" [ref=e126]
+            - row "ALUMNO-00008 E2E Usuario Prueba eusuario5 e2e-1773281201128@test.com E2E-1773281201128 13/5/2000 Editar Eliminar" [ref=e127]:
+              - cell "ALUMNO-00008" [ref=e128]
+              - cell "E2E" [ref=e129]
+              - cell "Usuario Prueba" [ref=e130]
+              - cell "eusuario5" [ref=e131]
+              - cell "e2e-1773281201128@test.com" [ref=e132]
+              - cell "E2E-1773281201128" [ref=e133]
+              - cell "13/5/2000" [ref=e134]
+              - cell "Editar Eliminar" [ref=e135]:
+                - generic [ref=e136]:
+                  - button "Editar" [ref=e137]
+                  - button "Eliminar" [ref=e138]
+```
