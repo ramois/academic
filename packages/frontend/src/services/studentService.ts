@@ -1,82 +1,79 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
+import { apiRequest } from '../lib';
+import type { Student, CreateStudentDto, UpdateStudentDto } from '../entities';
 
-export type Student = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  document: string;
-  birthDate: string;
-  code: string;
-  userId: string;
-  username?: string;
-  email?: string;
+export type { Student, CreateStudentDto, UpdateStudentDto } from '../entities';
+
+export type StudentsPaginatedParams = {
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
-export type CreateStudentDto = {
-  firstName: string;
-  lastName: string;
-  document: string;
-  birthDate: string;
-  email?: string;
+export type StudentsPaginatedResponse = {
+  data: Student[];
+  total: number;
 };
+
+export async function getStudentsPaginated(
+  params: StudentsPaginatedParams,
+): Promise<StudentsPaginatedResponse> {
+  const search = new URLSearchParams();
+  search.set('page', String(params.page));
+  search.set('pageSize', String(params.pageSize));
+  if (params.sortBy) search.set('sortBy', params.sortBy);
+  if (params.sortOrder) search.set('sortOrder', params.sortOrder);
+  return apiRequest<StudentsPaginatedResponse>(`/students?${search.toString()}`, {
+    defaultErrorMessage: 'Error al cargar alumnos',
+  });
+}
 
 export async function createStudent(data: CreateStudentDto): Promise<Student> {
-  const res = await fetch(`${API_BASE}/students`, {
+  return apiRequest<Student>('/students', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+    defaultErrorMessage: 'Error al registrar alumno',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? 'Error al registrar alumno');
-  }
-  return res.json();
 }
 
 export async function getStudents(): Promise<Student[]> {
-  const res = await fetch(`${API_BASE}/students`);
-  if (!res.ok) throw new Error('Error al cargar alumnos');
-  return res.json();
+  return apiRequest<Student[]>('/students', {
+    defaultErrorMessage: 'Error al cargar alumnos',
+  });
 }
 
 export async function getStudent(id: string): Promise<Student> {
-  const res = await fetch(`${API_BASE}/students/${id}`);
-  if (!res.ok) {
-    if (res.status === 404) throw new Error('Estudiante no encontrado');
-    throw new Error('Error al cargar alumno');
+  try {
+    return await apiRequest<Student>(`/students/${id}`, {
+      defaultErrorMessage: 'Estudiante no encontrado',
+    });
+  } catch (err) {
+    if (err instanceof Error && /not found|no encontrado/i.test(err.message))
+      throw new Error('Estudiante no encontrado');
+    throw err;
   }
-  return res.json();
 }
-
-export type UpdateStudentDto = {
-  firstName?: string;
-  lastName?: string;
-  document?: string;
-  birthDate?: string;
-  email?: string;
-};
 
 export async function updateStudent(
   id: string,
   data: UpdateStudentDto,
 ): Promise<Student> {
-  const res = await fetch(`${API_BASE}/students/${id}`, {
+  return apiRequest<Student>(`/students/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+    defaultErrorMessage: 'Error al actualizar alumno',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? 'Error al actualizar alumno');
-  }
-  return res.json();
 }
 
 export async function deleteStudent(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/students/${id}`, { method: 'DELETE' });
-  if (!res.ok) {
-    if (res.status === 404) throw new Error('Estudiante no encontrado');
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? 'Error al eliminar alumno');
+  try {
+    await apiRequest<void>(`/students/${id}`, {
+      method: 'DELETE',
+      defaultErrorMessage: 'Error al eliminar alumno',
+    });
+  } catch (err) {
+    if (err instanceof Error && /not found|no encontrado/i.test(err.message))
+      throw new Error('Estudiante no encontrado');
+    throw err;
   }
 }

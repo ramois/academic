@@ -10,6 +10,7 @@ describe('StudentService', () => {
   let studentRepo: {
     findAll: jest.Mock;
     findById: jest.Mock;
+    findPaginated: jest.Mock;
     save: jest.Mock;
     delete: jest.Mock;
     existsByCode: jest.Mock;
@@ -45,6 +46,7 @@ describe('StudentService', () => {
     studentRepo = {
       findAll: jest.fn(),
       findById: jest.fn(),
+      findPaginated: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
       existsByCode: jest.fn(),

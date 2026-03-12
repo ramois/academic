@@ -8,6 +8,7 @@ describe('StudentsController', () => {
   let controller: StudentsController;
   let studentService: {
     findAllWithUserInfo: jest.Mock;
+    findPaginatedWithUserInfo: jest.Mock;
     findByIdWithUserInfo: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
@@ -32,6 +33,7 @@ describe('StudentsController', () => {
   beforeEach(async () => {
     studentService = {
       findAllWithUserInfo: jest.fn(),
+      findPaginatedWithUserInfo: jest.fn(),
       findByIdWithUserInfo: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -49,12 +51,30 @@ describe('StudentsController', () => {
   });
 
   describe('findAll', () => {
-    it('debería devolver la lista de estudiantes con info de usuario', async () => {
+    it('debería devolver la lista de estudiantes con info de usuario cuando no hay query params', async () => {
       studentService.findAllWithUserInfo.mockResolvedValue([mockStudentWithUser]);
       const result = await controller.findAll();
-      expect(result).toHaveLength(1);
-      expect(result[0].username).toBe('jdoe');
+      expect(Array.isArray(result)).toBe(true);
+      expect((result as typeof mockStudentWithUser[]).length).toBe(1);
+      expect((result as typeof mockStudentWithUser[])[0].username).toBe('jdoe');
       expect(studentService.findAllWithUserInfo).toHaveBeenCalledTimes(1);
+      expect(studentService.findPaginatedWithUserInfo).not.toHaveBeenCalled();
+    });
+
+    it('debería devolver paginado cuando se envían page y pageSize', async () => {
+      studentService.findPaginatedWithUserInfo.mockResolvedValue({
+        data: [mockStudentWithUser],
+        total: 1,
+      });
+      const result = await controller.findAll('1', '10', 'firstName', 'asc');
+      expect(result).toEqual({ data: [mockStudentWithUser], total: 1 });
+      expect(studentService.findPaginatedWithUserInfo).toHaveBeenCalledWith(
+        1,
+        10,
+        'firstName',
+        'asc',
+      );
+      expect(studentService.findAllWithUserInfo).not.toHaveBeenCalled();
     });
   });
 

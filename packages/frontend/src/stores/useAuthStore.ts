@@ -1,9 +1,8 @@
 import { create } from 'zustand';
+import type { User, Role } from '../entities';
 
 const AUTH_STORAGE_KEY = 'academic_user';
-
-/** Roles del sistema. Coinciden con el backend (nombre del rol). */
-export type Role = 'ADMINISTRATOR' | 'STUDENT' | 'TEACHER';
+const TOKEN_STORAGE_KEY = 'academic_token';
 
 const VALID_ROLES: Role[] = ['ADMINISTRATOR', 'STUDENT', 'TEACHER'];
 
@@ -11,38 +10,54 @@ function isRole(value: unknown): value is Role {
   return typeof value === 'string' && VALID_ROLES.includes(value as Role);
 }
 
-function getStoredUser(): User | null {
-  if (typeof window === 'undefined') return null;
+function getStored(): { user: User | null; token: string | null } {
+  if (typeof window === 'undefined') return { user: null, token: null };
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!raw || !token) return { user: null, token: null };
     const data = JSON.parse(raw) as User;
-    return data?.id && isRole(data?.role) ? data : null;
+    const user = data?.id && isRole(data?.role) ? data : null;
+    return { user, token };
   } catch {
-    return null;
+    return { user: null, token: null };
   }
 }
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-};
-
 type AuthState = {
   user: User | null;
-  setUser: (user: User | null) => void;
+  token: string | null;
+  setAuth: (user: User, token: string) => void;
+  clearAuth: () => void;
 };
 
+const stored = getStored();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: getStoredUser(),
-  setUser: (user) => {
-    if (user) {
+  user: stored.user,
+  token: stored.token,
+  setAuth: (user, token) => {
+    if (typeof window !== 'undefined') {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
     }
-    set({ user });
+    set({ user, token });
+  },
+  clearAuth: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+    set({ user: null, token: null });
   },
 }));
+
+export function getAuthToken(): string | null {
+  return useAuthStore.getState().token;
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}

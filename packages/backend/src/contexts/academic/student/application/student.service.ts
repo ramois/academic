@@ -1,8 +1,13 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Student } from '../domain/student.entity';
-import { IStudentRepository, STUDENT_REPOSITORY } from '../domain/student.repository';
+import { IStudentRepository, STUDENT_REPOSITORY, type StudentSortField } from '../domain/student.repository';
 import { RoleService } from '../../../identity-access/roles/application/role.service';
 import { UserService } from '../../../identity-access/users/application/user.service';
+
+export type StudentsPaginatedResult = {
+  data: Array<Student & { username: string; email: string }>;
+  total: number;
+};
 
 @Injectable()
 export class StudentService {
@@ -31,6 +36,32 @@ export class StudentService {
       });
     }
     return result;
+  }
+
+  async findPaginatedWithUserInfo(
+    page: number,
+    pageSize: number,
+    sortBy?: StudentSortField,
+    sortOrder?: 'asc' | 'desc',
+  ): Promise<StudentsPaginatedResult> {
+    const offset = (Math.max(1, page) - 1) * Math.max(1, pageSize);
+    const limit = Math.min(100, Math.max(1, pageSize));
+    const { data: students, total } = await this.studentRepository.findPaginated({
+      offset,
+      limit,
+      sortBy,
+      sortOrder,
+    });
+    const data: Array<Student & { username: string; email: string }> = [];
+    for (const student of students) {
+      const user = await this.userService.findById(student.userId);
+      data.push({
+        ...student,
+        username: user?.username ?? '',
+        email: user?.email ?? '',
+      });
+    }
+    return { data, total };
   }
 
   async findById(id: string): Promise<Student | null> {

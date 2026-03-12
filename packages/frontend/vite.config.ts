@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    env: { VITE_API_BASE: 'http://localhost:3000' },
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',
@@ -21,15 +22,6 @@ export default defineConfig({
         '**/test/setup.ts',
         '**/vite-env.d.ts',
       ],
-    },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
     },
   },
 });

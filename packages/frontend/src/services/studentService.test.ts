@@ -9,7 +9,25 @@ import {
   type UpdateStudentDto,
 } from './studentService';
 
-const API_BASE = '/api';
+/** Mock de Response compatible con lib/api (usa res.text()). */
+function mockRes(overrides: {
+  ok?: boolean;
+  body?: unknown;
+  status?: number;
+} = {}) {
+  const ok = overrides.ok ?? true;
+  const body = overrides.body !== undefined ? JSON.stringify(overrides.body) : '';
+  return {
+    ok,
+    status: overrides.status,
+    json: () => Promise.resolve(overrides.body),
+    text: () => Promise.resolve(body),
+  };
+}
+
+vi.mock('../stores', () => ({
+  getAuthHeaders: vi.fn(() => ({})),
+}));
 
 describe('studentService', () => {
   beforeEach(() => {
@@ -29,19 +47,21 @@ describe('studentService', () => {
           userId: 'u1',
         },
       ];
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(list),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockRes({ body: list }));
 
       const result = await getStudents();
 
-      expect(fetch).toHaveBeenCalledWith(`${API_BASE}/students`);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/students'),
+        expect.any(Object),
+      );
       expect(result).toEqual(list);
     });
 
     it('debería lanzar si la respuesta no es ok', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: false });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, body: {}, status: 500 }),
+      );
 
       await expect(getStudents()).rejects.toThrow('Error al cargar alumnos');
     });
@@ -60,22 +80,18 @@ describe('studentService', () => {
         username: 'jdoe',
         email: 'jdoe@test.com',
       };
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(student),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockRes({ body: student }));
 
       const result = await getStudent('1');
 
-      expect(fetch).toHaveBeenCalledWith(`${API_BASE}/students/1`);
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/students/1'), expect.any(Object));
       expect(result).toEqual(student);
     });
 
     it('debería lanzar "Estudiante no encontrado" en 404', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, status: 404, body: { message: 'Student not found' } }),
+      );
 
       await expect(getStudent('inexistente')).rejects.toThrow(
         'Estudiante no encontrado',
@@ -83,10 +99,9 @@ describe('studentService', () => {
     });
 
     it('debería lanzar error genérico en otro error', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, status: 500, body: { message: 'Error al cargar alumno' } }),
+      );
 
       await expect(getStudent('1')).rejects.toThrow('Error al cargar alumno');
     });
@@ -108,27 +123,20 @@ describe('studentService', () => {
         code: 'ALUMNO-00002',
         userId: 'u2',
       };
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(created),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockRes({ body: created }));
 
       const result = await createStudent(dto);
 
-      expect(fetch).toHaveBeenCalledWith(`${API_BASE}/students`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dto),
-      });
+      const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(call[0]).toMatch(/\/students$/);
+      expect(call[1]).toMatchObject({ method: 'POST', body: JSON.stringify(dto) });
       expect(result).toEqual(created);
     });
 
     it('debería lanzar con mensaje del servidor si no es ok', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        statusText: 'Bad Request',
-        json: () => Promise.resolve({ message: 'Documento duplicado' }),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, body: { message: 'Documento duplicado' } }),
+      );
 
       await expect(createStudent(dto)).rejects.toThrow('Documento duplicado');
     });
@@ -137,6 +145,7 @@ describe('studentService', () => {
       (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: false,
         statusText: 'Server Error',
+        text: () => Promise.resolve(''),
         json: () => Promise.reject(new Error('parse error')),
       });
 
@@ -157,26 +166,20 @@ describe('studentService', () => {
         code: 'ALUMNO-00001',
         userId: 'u1',
       };
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(updated),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockRes({ body: updated }));
 
       const result = await updateStudent('1', dto);
 
-      expect(fetch).toHaveBeenCalledWith(`${API_BASE}/students/1`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dto),
-      });
+      const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(call[0]).toMatch(/\/students\/1$/);
+      expect(call[1]).toMatchObject({ method: 'PATCH', body: JSON.stringify(dto) });
       expect(result).toEqual(updated);
     });
 
     it('debería lanzar si la respuesta no es ok', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        json: () => Promise.resolve({ message: 'Validation failed' }),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, body: { message: 'Validation failed' } }),
+      );
 
       await expect(updateStudent('1', dto)).rejects.toThrow('Validation failed');
     });
@@ -184,19 +187,19 @@ describe('studentService', () => {
 
   describe('deleteStudent', () => {
     it('debería enviar DELETE y no lanzar si ok', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockRes());
 
       await expect(deleteStudent('1')).resolves.toBeUndefined();
-      expect(fetch).toHaveBeenCalledWith(`${API_BASE}/students/1`, {
-        method: 'DELETE',
-      });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/students/1'),
+        expect.objectContaining({ method: 'DELETE' }),
+      );
     });
 
     it('debería lanzar "Estudiante no encontrado" en 404', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, status: 404, body: { message: 'Student not found' } }),
+      );
 
       await expect(deleteStudent('inexistente')).rejects.toThrow(
         'Estudiante no encontrado',
@@ -204,11 +207,9 @@ describe('studentService', () => {
     });
 
     it('debería lanzar error genérico en otro error', async () => {
-      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ message: 'Server error' }),
-      });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockRes({ ok: false, status: 500, body: { message: 'Server error' } }),
+      );
 
       await expect(deleteStudent('1')).rejects.toThrow('Server error');
     });

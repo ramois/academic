@@ -2,8 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from '../domain/student.entity';
-import { IStudentRepository } from '../domain/student.repository';
+import { IStudentRepository, type FindPaginatedOptions, type StudentSortField } from '../domain/student.repository';
 import { StudentTypeOrmEntity } from './student-typeorm.entity';
+
+const SORT_FIELD_MAP: Record<StudentSortField, keyof StudentTypeOrmEntity> = {
+  firstName: 'firstName',
+  lastName: 'lastName',
+  code: 'code',
+  document: 'document',
+  birthDate: 'birthDate',
+  createdAt: 'createdAt',
+};
 
 @Injectable()
 export class StudentTypeOrmRepository implements IStudentRepository {
@@ -15,6 +24,17 @@ export class StudentTypeOrmRepository implements IStudentRepository {
   async findAll(): Promise<Student[]> {
     const rows = await this.repo.find({ order: { createdAt: 'ASC' } });
     return rows.map((r) => this.toDomain(r));
+  }
+
+  async findPaginated(options: FindPaginatedOptions): Promise<{ data: Student[]; total: number }> {
+    const { offset, limit, sortBy = 'createdAt', sortOrder = 'asc' } = options;
+    const orderField = SORT_FIELD_MAP[sortBy] ?? 'createdAt';
+    const [rows, total] = await this.repo.findAndCount({
+      order: { [orderField]: sortOrder.toUpperCase() as 'ASC' | 'DESC' },
+      skip: offset,
+      take: limit,
+    });
+    return { data: rows.map((r) => this.toDomain(r)), total };
   }
 
   async findById(id: string): Promise<Student | null> {

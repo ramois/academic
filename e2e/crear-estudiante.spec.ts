@@ -19,7 +19,7 @@ function randomStudentData() {
   const suffix = uniqueSuffix();
   return {
     nombre: `Nombre-${suffix}`,
-    apellidos: `Apellidos-${suffix}`,
+    apellidos: `Apellidos ${suffix}`,
     documento: `DOC-${suffix}`,
     email: `e2e-${suffix}@test.com`,
     fechaNacimiento: randomDate(1990, 2005),

@@ -83,6 +83,7 @@ Variables en `.env`:
 | `TYPEORM_PASSWORD` | Contraseña de PostgreSQL | `postgres` |
 | `TYPEORM_DATABASE` | Nombre de la base de datos | `academic` |
 | `STUDENT_DEFAULT_PASSWORD` | Contraseña por defecto para nuevos estudiantes | `TempStudent1!` |
+| `JWT_SECRET` | Secreto para firmar los JWT (cambiar en producción) | — |
 
 ### Frontend (`packages/frontend`)
 
@@ -93,7 +94,7 @@ cp .env.example .env
 
 | Variable | Descripción |
 |----------|-------------|
-| `VITE_API_BASE` | Base URL para la API. En desarrollo con proxy usar `/api` | `/api` |
+| `VITE_API_BASE` | Base URL del backend (ej. `http://localhost:3000`) | `http://localhost:3000` |
 
 ---
 
@@ -147,7 +148,7 @@ npm run dev
 # Solo backend (API en http://localhost:3000)
 npm run dev:backend
 
-# Solo frontend (app en http://localhost:5173, proxy /api → backend)
+# Solo frontend (app en http://localhost:5173; las peticiones van a VITE_API_BASE)
 npm run dev:frontend
 ```
 
@@ -167,7 +168,7 @@ cd packages/frontend
 npm run dev
 ```
 
-El frontend en desarrollo usa un proxy: las peticiones a `/api` se reenvían a `http://localhost:3000`. Asegúrate de que el backend esté levantado para que login y datos funcionen.
+El frontend usa la URL del backend definida en `VITE_API_BASE` (por defecto `http://localhost:3000`). Asegúrate de que el backend esté levantado para que login y datos funcionen.
 
 ---
 

@@ -63,7 +63,7 @@ export function EditPage() {
   if (loadingData) {
     return (
       <MainLayout>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-200/50 sm:p-10">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-200/50 sm:p-10 w-full">
           <p className="text-slate-600">Cargando…</p>
         </div>
       </MainLayout>
@@ -72,81 +72,83 @@ export function EditPage() {
 
   return (
     <MainLayout>
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-200/50 sm:p-10 max-w-lg">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm ring-1 ring-slate-200/50 sm:p-10 w-full">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Editar estudiante
         </h2>
         <p className="mt-2 text-slate-600 text-sm">
           Modifica los datos del estudiante. El código de alumno no se puede cambiar.
         </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Nombre
-            </label>
-            <Input
-              id="firstName"
-              type="text"
-              required
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Ej. María"
-            />
-          </div>
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Apellidos
-            </label>
-            <Input
-              id="lastName"
-              type="text"
-              required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Ej. García López"
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Email de usuario
-            </label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Ej. maria.garcia@correo.com"
-            />
-          </div>
-          <div>
-            <label htmlFor="document" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Documento
-            </label>
-            <Input
-              id="document"
-              type="text"
-              required
-              value={document}
-              onChange={(e) => setDocument(e.target.value)}
-              placeholder="Ej. DNI, pasaporte..."
-            />
-          </div>
-          <div>
-            <label htmlFor="birthDate" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Fecha de nacimiento
-            </label>
-            <Input
-              id="birthDate"
-              type="date"
-              required
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-            />
+        <form onSubmit={handleSubmit} className="mt-6 w-full xl:max-w-[70%]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Nombre
+              </label>
+              <Input
+                id="firstName"
+                type="text"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Ej. María"
+              />
+            </div>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Apellidos
+              </label>
+              <Input
+                id="lastName"
+                type="text"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Ej. García López"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email de usuario
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ej. maria.garcia@correo.com"
+              />
+            </div>
+            <div>
+              <label htmlFor="document" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Documento
+              </label>
+              <Input
+                id="document"
+                type="text"
+                required
+                value={document}
+                onChange={(e) => setDocument(e.target.value)}
+                placeholder="Ej. DNI, pasaporte..."
+              />
+            </div>
+            <div>
+              <label htmlFor="birthDate" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Fecha de nacimiento
+              </label>
+              <Input
+                id="birthDate"
+                type="date"
+                required
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+              />
+            </div>
           </div>
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="mt-5 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
-          <div className="flex gap-3 pt-1">
+          <div className="flex gap-3 pt-6">
             <Button type="submit" disabled={loading}>
               {loading ? 'Guardando…' : 'Guardar cambios'}
             </Button>

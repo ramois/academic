@@ -1,16 +1,29 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores';
 
-export function Header() {
-  const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
+type HeaderProps = {
+  onMenuClick?: () => void;
+};
 
-  const logout = () => setUser(null);
+export function Header({ onMenuClick }: HeaderProps) {
+  const user = useAuthStore((s) => s.user);
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="mx-auto flex h-16 items-center justify-between px-6 sm:px-6 lg:px-6">
+      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-6">
         <div className="flex items-center gap-3">
+          {onMenuClick && (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Abrir menú"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
+          )}
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -24,27 +37,10 @@ export function Header() {
         </div>
         <div className="flex items-center gap-3">
           {user && (
-            <>
-              <div className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-700 ring-1 ring-slate-200/60">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-                <span className="font-medium">{user.name}</span>
-              </div>
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                Cerrar sesión
-              </button>
-            </>
-          )}
-          {!user && (
-            <Link
-              to="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              Iniciar sesión
-            </Link>
+            <div className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-700 ring-1 ring-slate-200/60">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+              <span className="font-medium">{user.name}</span>
+            </div>
           )}
         </div>
       </div>

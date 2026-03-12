@@ -8,7 +8,7 @@ import { useAuthStore, type Role } from '../../../stores';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,12 +24,15 @@ export function LoginPage() {
     setLoading(true);
     try {
       const result = await login(username, password);
-      setUser({
-        id: result.id,
-        name: result.username,
-        email: result.email,
-        role: result.role as Role,
-      });
+      setAuth(
+        {
+          id: result.user.id,
+          name: result.user.username,
+          email: result.user.email,
+          role: result.user.role as Role,
+        },
+        result.access_token,
+      );
       navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');

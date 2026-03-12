@@ -6,16 +6,37 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   NotFoundException,
 } from '@nestjs/common';
 import { StudentService } from '../../../contexts/academic/student/application/student.service';
+import type { StudentSortField } from '../../../contexts/academic/student/domain/student.repository';
+
+const SORT_FIELDS: StudentSortField[] = ['firstName', 'lastName', 'code', 'document', 'birthDate', 'createdAt'];
 
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentService: StudentService) {}
 
   @Get()
-  async findAll() {
+  async findAll(
+    @Query('page') pageStr?: string,
+    @Query('pageSize') pageSizeStr?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
+  ) {
+    const page = pageStr != null ? parseInt(pageStr, 10) : undefined;
+    const pageSize = pageSizeStr != null ? parseInt(pageSizeStr, 10) : undefined;
+    if (page != null && !Number.isNaN(page) && pageSize != null && !Number.isNaN(pageSize)) {
+      const sort = sortBy && SORT_FIELDS.includes(sortBy as StudentSortField) ? sortBy as StudentSortField : undefined;
+      const order = sortOrder === 'desc' || sortOrder === 'asc' ? sortOrder : undefined;
+      return this.studentService.findPaginatedWithUserInfo(
+        page,
+        pageSize,
+        sort,
+        order,
+      );
+    }
     return this.studentService.findAllWithUserInfo();
   }
 
