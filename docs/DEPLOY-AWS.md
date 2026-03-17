@@ -207,21 +207,226 @@ Ajusta rutas y nombres de procesos PM2 según tu estructura (por ejemplo, si sir
 
 ---
 
-## 5. Opción: Despliegue con Docker (GitHub Actions + EC2)
+## 5. Despliegue con Docker en EC2 (paso a paso)
 
-Construye las imágenes en GitHub Actions (tras CI) y despliega en EC2 con Docker. Archivos: [packages/backend/Dockerfile](../../packages/backend/Dockerfile), [packages/frontend/Dockerfile](../../packages/frontend/Dockerfile), [docker-compose.yml](../../docker-compose.yml). Workflow [.github/workflows/docker-build.yml](../../.github/workflows/docker-build.yml) hace build y push a **ghcr.io** cuando CI pasa. En EC2: instala Docker, `docker login ghcr.io`, pull de `academic-ddd-backend` y `academic-ddd-frontend`, y ejecuta los contenedores con env (JWT_SECRET, TYPEORM_*). Opcional: job de deploy por SSH que haga pull y `docker run` o `docker compose up -d`.
+Construye las imágenes en GitHub Actions (tras CI) y despliega en EC2 con Docker. Archivos: [packages/backend/Dockerfile](../../packages/backend/Dockerfile), [packages/frontend/Dockerfile](../../packages/frontend/Dockerfile), [docker-compose.yml](../../docker-compose.yml). Workflow [.github/workflows/docker-build.yml](../../.github/workflows/docker-build.yml) hace build y push a **ghcr.io** cuando CI pasa.
+
+**Requisitos:** Cuenta AWS, instancia EC2 creada (sección 2). En esta guía se usa solo Docker en EC2 (no hace falta instalar Node ni PM2 en el host).
+
+---
+
+### 5.1. Instalar Docker en la instancia EC2
+
+Conéctate por SSH (reemplaza `TU_IP` y `tu-key.pem`):
+
+```bash
+chmod 400 tu-key.pem
+ssh -i tu-key.pem ubuntu@TU_IP
+```
+
+En la instancia, instala Docker y Docker Compose (plugin):
+
+```bash
+sudo apt update && sudo apt install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker ubuntu
+```
+
+Cierra sesión y vuelve a entrar para que el grupo `docker` aplique (o ejecuta `newgrp docker`).
+
+---
+
+### 5.2. Permisos del workflow para GHCR
+
+En el repositorio: **Settings → Actions → General → Workflow permissions** → elige **Read and write permissions** para que el workflow pueda hacer push de imágenes a GitHub Container Registry.
+
+---
+
+### 5.3. Directorio de la app y compose de producción en EC2
+
+En EC2:
+
+```bash
+mkdir -p ~/academic-ddd && cd ~/academic-ddd
+```
+
+Crea un archivo `docker-compose.prod.yml` (solo en el servidor; no lo subas al repo si contiene referencias a secretos). Reemplaza `TU_OWNER` por el owner del repo (ej. tu usuario de GitHub):
+
+```yaml
+# ~/academic-ddd/docker-compose.prod.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${TYPEORM_PASSWORD}
+      POSTGRES_DB: academic
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/TU_OWNER/academic-ddd-backend:latest
+    env_file: .env.production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/TU_OWNER/academic-ddd-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+```
+
+---
+
+### 5.4. Variables de entorno en el servidor (`.env.production`)
+
+En EC2, dentro de `~/academic-ddd/`:
+
+```bash
+vi .env.production
+```
+
+Contenido (usa valores reales de producción; **no** subas este archivo al repo):
+
+```env
+NODE_ENV=production
+PORT=3000
+JWT_SECRET=genera_un_secreto_largo_y_aleatorio_aqui
+TYPEORM_HOST=postgres
+TYPEORM_PORT=5432
+TYPEORM_USERNAME=postgres
+TYPEORM_PASSWORD=tu_password_postgres_seguro
+TYPEORM_DATABASE=academic
+STUDENT_DEFAULT_PASSWORD=TempStudent1!
+```
+
+Guarda y restringe permisos: `chmod 600 .env.production`.
+
+---
+
+### 5.5. Secrets y variables en GitHub
+
+En el repo: **Settings → Secrets and variables → Actions**.
+
+**Secrets (obligatorios para el deploy por SSH):**
+
+| Secret             | Descripción |
+|--------------------|-------------|
+| `AWS_EC2_HOST`     | IP pública o DNS de la instancia EC2 |
+| `AWS_EC2_USER`     | Usuario SSH (ej. `ubuntu`) |
+| `SSH_PRIVATE_KEY`  | Contenido completo del archivo `.pem` |
+| `GHCR_PAT`         | Personal Access Token de GitHub con scope `read:packages` (para `docker login` en el job de deploy) |
+
+**Variable (opcional, para el build del frontend):**
+
+| Variable        | Ejemplo                         | Uso |
+|-----------------|----------------------------------|-----|
+| `VITE_API_BASE` | `https://tu-dominio.com/api` o `http://TU_IP/api` | URL pública de la API; se usa en el build del frontend en el workflow. Si no la defines, la imagen usará la por defecto. |
+
+---
+
+### 5.6. Job de deploy en el workflow de Docker
+
+Añade un job de deploy en [.github/workflows/docker-build.yml](../../.github/workflows/docker-build.yml) que se ejecute tras `build-and-push`, solo en `main`. El job debe conectarse por SSH a EC2, hacer login en GHCR, pull de las imágenes y levantar los contenedores con el archivo de env.
+
+Ejemplo (ajusta el nombre del compose si usas otro):
+
+```yaml
+  deploy-ec2:
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/academic-ddd
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+```
+
+Si las migraciones se ejecutan aparte (por ejemplo con un comando en el backend), añade en el script algo como:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm backend npm run migrations:run
+```
+
+(ajusta el comando según tu proyecto).
+
+---
+
+### 5.7. Primera puesta en marcha (manual en EC2)
+
+Antes del primer deploy automático, en EC2 debes tener ya el `docker-compose.prod.yml` y el `.env.production` (pasos 5.3 y 5.4). Luego haz login en GHCR (una vez; puedes usar el mismo token que guardaste en `GHCR_PAT`):
+
+```bash
+cd ~/academic-ddd
+echo "TU_GITHUB_PAT" | docker login ghcr.io -u TU_USUARIO_GITHUB --password-stdin
+docker compose -f docker-compose.prod.yml --env-file .env.production pull
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+```
+
+Si tienes migraciones, ejecútalas (por ejemplo `docker compose -f docker-compose.prod.yml run --rm backend npm run migrations:run`).
+
+---
+
+### 5.8. Comprobar que todo funciona
+
+- En el navegador: `http://TU_IP_EC2` (frontend) y `http://TU_IP_EC2/api/health` (o la ruta de health de tu backend).
+- En EC2: `docker compose -f docker-compose.prod.yml ps` y `docker compose -f docker-compose.prod.yml logs -f` para ver contenedores y logs.
+
+---
+
+### Cuándo configurar las variables de entorno
+
+- **Al construir la imagen (GitHub Actions):** No hace falta configurar `JWT_SECRET`, `TYPEORM_*`, etc. en el workflow. La imagen del backend no lleva secretos; los lee en tiempo de ejecución. Opcionalmente usa la variable de repositorio `VITE_API_BASE` como build-arg del frontend para la URL pública de la API.
+
+- **En EC2 (runtime):** Las variables se configuran en el archivo `.env.production` del servidor (paso 5.4) y se pasan con `--env-file .env.production` al levantar los contenedores. No pongas valores de producción en el `docker-compose.yml` del repo.
 
 ---
 
 ## 6. Resumen de pasos para “subir a producción”
 
-1. **AWS**: Cuenta creada, EC2 t2.micro lanzada, seguridad (22, 80, 443, 3000).
-2. **Servidor**: Node.js, Git, PostgreSQL, Nginx (y opcionalmente PM2).
-3. **App**: Clonar repo, `packages/backend/.env`, `npm ci && npm run build`, PM2 para API, Nginx (o serve) para frontend.
-4. **GitHub**: Secrets `AWS_EC2_HOST`, `AWS_EC2_USER`, `SSH_PRIVATE_KEY`.
-5. **Pipeline**: Workflow que ejecute tests unitarios → tests e2e → deploy a EC2 en `main`.
+**Opción A – Node/PM2 (secciones 3 y 4):**
 
-**Con Docker:** Pipeline CI → Docker Build and Push a GHCR → deploy por SSH (pull imágenes y `docker run` o compose en EC2). Secrets: token para ghcr.io y variables del backend.
+1. **AWS**: Cuenta creada, EC2 t2.micro lanzada, seguridad (22, 80, 443, 3000).
+2. **Servidor**: Node.js, Git, PostgreSQL, Nginx (y PM2).
+3. **App**: Clonar repo, `packages/backend/.env`, `npm ci && npm run build`, PM2 para API, Nginx para frontend.
+4. **GitHub**: Secrets `AWS_EC2_HOST`, `AWS_EC2_USER`, `SSH_PRIVATE_KEY`.
+5. **Pipeline**: Workflow con tests unitarios → tests e2e → deploy a EC2 en `main`.
+
+**Opción B – Docker (sección 5):**
+
+1. **AWS**: Cuenta creada, EC2 t2.micro lanzada, seguridad (22, 80, 443).
+2. **EC2**: Instalar Docker y Docker Compose (5.1), crear `~/academic-ddd`, `docker-compose.prod.yml` (5.3) y `.env.production` (5.4).
+3. **GitHub**: Workflow permissions Read and write (5.2). Secrets: `AWS_EC2_HOST`, `AWS_EC2_USER`, `SSH_PRIVATE_KEY`, `GHCR_PAT`. Opcional: variable `VITE_API_BASE` (5.5).
+4. **Pipeline**: CI → Docker Build and Push a GHCR → job `deploy-ec2` (SSH, login GHCR, pull, `docker compose up -d`) (5.6).
+5. **Primera vez**: En EC2, login en GHCR y `docker compose up -d` manual (5.7).
 
 ---
 
