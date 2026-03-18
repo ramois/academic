@@ -1,0 +1,45 @@
+gservices:
+  backend:
+    image: ghcr.io/TU_OWNER/academic-ddd-backend:latest
+    env_file: .env.production
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      - postgres
+
+  frontend:
+    image: ghcr.io/TU_OWNER/academic-ddd-frontend:latest
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+  # Reverse proxy único para cumplir:
+  # - http://54.196.134.117/ -> frontend
+  # - http://54.196.134.117/api/auth/login -> backend POST /auth/login
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx/docker-compose.prod.conf:/etc/nginx/conf.d/default.conf:ro
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${TYPEORM_PASSWORD}
+      POSTGRES_DB: academic
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
