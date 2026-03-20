@@ -57,10 +57,27 @@ export function EditPage() {
     })();
   }, [id]);
 
+  const validateForm = (): string | null => {
+    if (!courseId) return "Selecciona un curso";
+    if (!dayOfWeek) return "Selecciona un día de la semana";
+    if (!startTime) return "Ingresa la hora de inicio";
+    if (!endTime) return "Ingresa la hora de fin";
+    if (startTime >= endTime)
+      return "La hora de fin debe ser mayor que la hora de inicio";
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
     setError(null);
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
     try {
       await updateSchedule(id, {

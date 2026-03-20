@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { Schedule } from '../domain/schedule.entity';
 import { IScheduleRepository, SCHEDULE_REPOSITORY, ScheduleSortField } from '../domain/schedule.repository';
 import { CourseService } from '../../course/application/course.service';
@@ -25,6 +25,63 @@ export class ScheduleService {
     private readonly scheduleRepository: IScheduleRepository,
     private readonly courseService: CourseService,
   ) {}
+
+  private parseSlotTime(slot: string): { startHour: number; endHour: number } | null {
+    const timeMatch = slot.match(/(\d{2}):(\d{2})-(\d{2}):(\d{2})/);
+    if (!timeMatch) return null;
+    const startHour = parseInt(timeMatch[1], 10) + parseInt(timeMatch[2], 10) / 60;
+    const endHour = parseInt(timeMatch[3], 10) + parseInt(timeMatch[4], 10) / 60;
+    return { startHour, endHour };
+  }
+
+  private getSlotDay(slot: string): string {
+    return slot.split(' ')[0];
+  }
+
+  private checkTimeOverlap(time1: { startHour: number; endHour: number }, time2: { startHour: number; endHour: number }): boolean {
+    return time1.startHour < time2.endHour && time1.endHour > time2.startHour;
+  }
+
+  private async validateCourseExists(courseId: string): Promise<void> {
+    const course = await this.courseService.findById(courseId);
+    if (!course) {
+      throw new BadRequestException(`El curso con ID ${courseId} no existe`);
+    }
+  }
+
+  private async validateNoDuplicate(courseId: string, slot: string, excludeId?: string): Promise<void> {
+    const allSchedules = await this.scheduleRepository.findAll();
+    const exists = allSchedules.some(s => 
+      s.courseId === courseId && 
+      s.slot === slot &&
+      (!excludeId || s.id !== excludeId)
+    );
+    if (exists) {
+      throw new BadRequestException(`Ya existe un horario igual para este curso`);
+    }
+  }
+
+  private async validateNoOverlap(courseId: string, slot: string, excludeId?: string): Promise<void> {
+    const allSchedules = await this.scheduleRepository.findAll();
+    const newSlotDay = this.getSlotDay(slot);
+    const newSlotTime = this.parseSlotTime(slot);
+    
+    if (!newSlotTime) return;
+
+    const overlapping = allSchedules.find(s => {
+      if (s.courseId !== courseId || (!excludeId || s.id === excludeId)) return false;
+      if (this.getSlotDay(s.slot) !== newSlotDay) return false;
+      
+      const existingTime = this.parseSlotTime(s.slot);
+      if (!existingTime) return false;
+      
+      return this.checkTimeOverlap(newSlotTime, existingTime);
+    });
+
+    if (overlapping) {
+      throw new BadRequestException(`El horario se superpone con otro existente en el mismo curso`);
+    }
+  }
 
   private sortSchedules(
     data: Array<Schedule & { courseName: string }>,
@@ -136,6 +193,10 @@ export class ScheduleService {
   }
 
   async create(data: { courseId: string; slot: string }): Promise<Schedule> {
+    await this.validateCourseExists(data.courseId);
+    await this.validateNoDuplicate(data.courseId, data.slot);
+    await this.validateNoOverlap(data.courseId, data.slot);
+
     const id = crypto.randomUUID();
     const schedule = new Schedule(id, data.courseId, data.slot);
     return this.scheduleRepository.save(schedule);
@@ -147,6 +208,14 @@ export class ScheduleService {
 
     const slot = data.slot?.trim() ?? schedule.slot;
     const courseId = data.courseId?.trim() ?? schedule.courseId;
+
+    if (data.courseId) {
+      await this.validateCourseExists(courseId);
+    }
+    if (data.slot || data.courseId) {
+      await this.validateNoDuplicate(courseId, slot, id);
+      await this.validateNoOverlap(courseId, slot, id);
+    }
 
     const updated = new Schedule(
       schedule.id,

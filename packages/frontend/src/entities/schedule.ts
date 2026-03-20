@@ -1,16 +1,16 @@
-export interface Schedule{
+export type Schedule = {
     id: string,
     courseId: string,
     courseName?: string,
     slot: string, 
 }
 
-export interface CreateScheduleDto{
+export type CreateScheduleDto = {
     courseId: string,
     slot: string, 
 }
 
-export interface UpdateScheduleDto{
+export type UpdateScheduleDto = {
     courseId?: string,
     slot?: string, 
 }
