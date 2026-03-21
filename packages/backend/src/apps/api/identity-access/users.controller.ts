@@ -40,6 +40,21 @@ export class UsersController {
     return users.map(toUserResponse);
   }
 
+  @Get('me')
+  async findCurrentUser(@Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('No autorizado');
+    }
+
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('Usario no encontrado');
+    }
+
+    return toUserResponse(user);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const user = await this.userService.findById(id);

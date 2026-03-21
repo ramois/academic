@@ -124,4 +124,34 @@ describe('UsersController', () => {
       NotFoundException,
     );
   });
+
+  it('debería devolver el usuario actual autenticado', async () => {
+    userService.findById.mockResolvedValue(mockUser);
+
+    const result = await controller.findCurrentUser({
+      user: { id: 'user-1' },
+    } as never);
+
+    expect(userService.findById).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({
+      id: 'user-1',
+      username: 'admin',
+      email: 'admin@academic.local',
+      roleId: 'role-1',
+    });
+  });
+
+  it('debería lanzar UnauthorizedException en /me si no hay usuario autenticado', async () => {
+    await expect(controller.findCurrentUser({} as never)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('debería lanzar NotFoundException en /me si el usuario autenticado no existe', async () => {
+    userService.findById.mockResolvedValue(null);
+
+    await expect(
+      controller.findCurrentUser({ user: { id: 'missing' } } as never),
+    ).rejects.toThrow(NotFoundException);
+  });
 });
