@@ -76,6 +76,55 @@ function overlaps(
   return toMinutes(startA) < toMinutes(endB) && toMinutes(endA) > toMinutes(startB);
 }
 
+async function setMaxRowsPerPage(page: Page) {
+  const pageSizeSelect = page
+    .locator('select')
+    .filter({ has: page.getByRole('option', { name: '50' }) })
+    .last();
+  if (await pageSizeSelect.count()) {
+    await pageSizeSelect.selectOption('50');
+  }
+}
+
+async function waitForScheduleTable(page: Page) {
+  await expect(page.locator('tbody tr').first()).toBeVisible();
+}
+
+async function collectScheduleTexts(page: Page): Promise<string[]> {
+  await waitForScheduleTable(page);
+  await setMaxRowsPerPage(page);
+
+  const texts: string[] = [];
+  const nextButton = page.getByRole('button', { name: /siguiente/i });
+
+  while (true) {
+    texts.push(...(await page.locator('tbody tr').allTextContents()));
+    if (await nextButton.isDisabled()) break;
+    await nextButton.click();
+  }
+
+  return texts;
+}
+
+async function goToScheduleRow(page: Page, rowText: string) {
+  await waitForScheduleTable(page);
+  await setMaxRowsPerPage(page);
+
+  const nextButton = page.getByRole('button', { name: /siguiente/i });
+
+  while (true) {
+    const row = page.locator('tbody tr').filter({ hasText: rowText });
+    if (await row.count()) {
+      await expect(row.first()).toBeVisible();
+      return row.first();
+    }
+    if (await nextButton.isDisabled()) break;
+    await nextButton.click();
+  }
+
+  throw new Error(`No se encontro la fila del horario: ${rowText}`);
+}
+
 async function pickUnusedSchedule(
   existingTexts: string[],
   courseLabel: string,
@@ -114,40 +163,68 @@ test.describe('Creación de horario (e2e)', () => {
     page,
   }) => {
     const classroomLabel = await createClassroom(page);
+    let createdSlot: string | null = null;
 
-    await page.goto('/horarios');
-    await expect(page.getByRole('heading', { name: /horarios/i })).toBeVisible();
-    const existingTexts = await page.locator('tbody tr').allTextContents();
-    await page.getByRole('button', { name: /agregar horario/i }).click();
-    await expect(page).toHaveURL(/\/horarios\/registro/);
-    await expect(
-      page.getByRole('heading', { name: /agregar horario/i }),
-    ).toBeVisible();
+    try {
+      await page.goto('/horarios');
+      await expect(page.getByRole('heading', { name: /horarios/i })).toBeVisible();
+      const existingTexts = await collectScheduleTexts(page);
+      await page.getByRole('button', { name: /agregar horario/i }).click();
+      await expect(page).toHaveURL(/\/horarios\/registro/);
+      await expect(
+        page.getByRole('heading', { name: /agregar horario/i }),
+      ).toBeVisible();
 
-    await expect(page.getByLabel(/curso/i)).toBeEnabled();
-    await expect(page.locator('#course option')).toHaveCount(4);
-    await expect(page.getByLabel(/aula/i)).toBeEnabled();
-    const courseLabel =
-      (await page.locator('#course option').nth(1).textContent())?.trim() ?? '';
-    const { day, startTime, endTime, slot } = await pickUnusedSchedule(
-      existingTexts,
-      courseLabel,
-    );
-    await page.getByLabel(/curso/i).selectOption({ index: 1 });
-    await page.getByLabel(/aula/i).selectOption({ label: classroomLabel });
-    await page
-      .getByLabel(/dia de la semana|d[ií]a de la semana/i)
-      .selectOption(day);
-    await page.getByLabel(/hora de inicio/i).fill(startTime);
-    await page.getByLabel(/hora de fin/i).fill(endTime);
+      await expect(page.getByLabel(/curso/i)).toBeEnabled();
+      await expect(page.locator('#course option')).toHaveCount(4);
+      await expect(page.getByLabel(/aula/i)).toBeEnabled();
+      const courseLabel =
+        (await page.locator('#course option').nth(1).textContent())?.trim() ?? '';
+      const { day, startTime, endTime, slot } = await pickUnusedSchedule(
+        existingTexts,
+        courseLabel,
+      );
+      createdSlot = slot;
+      await page.getByLabel(/curso/i).selectOption({ index: 1 });
+      await page.getByLabel(/aula/i).selectOption({ label: classroomLabel });
+      await page
+        .getByLabel(/dia de la semana|d[ií]a de la semana/i)
+        .selectOption(day);
+      await page.getByLabel(/hora de inicio/i).fill(startTime);
+      await page.getByLabel(/hora de fin/i).fill(endTime);
 
-    await page.getByRole('button', { name: /registrar horario/i }).click();
+      await page.getByRole('button', { name: /registrar horario/i }).click();
 
-    await expect(page).toHaveURL(/\/horarios$/);
-    await expect(page.getByRole('heading', { name: /horarios/i })).toBeVisible();
+      await expect(page).toHaveURL(/\/horarios$/);
+      await expect(page.getByRole('heading', { name: /horarios/i })).toBeVisible();
 
-    const scheduleRow = page.locator('tbody tr').filter({ hasText: slot });
-    await expect(scheduleRow).toBeVisible();
+      const scheduleRow = await goToScheduleRow(page, slot);
+      await expect(scheduleRow).toBeVisible();
+    } finally {
+      await page.goto('/horarios');
+      if (createdSlot) {
+        try {
+          const createdRow = await goToScheduleRow(page, createdSlot);
+          page.once('dialog', (dialog) => dialog.accept());
+          await createdRow.getByRole('button', { name: /eliminar/i }).click();
+          await expect(
+            page.locator('tbody tr').filter({ hasText: createdSlot }),
+          ).toHaveCount(0);
+        } catch {
+          // Si el horario no llegó a persistirse, no hay nada que limpiar.
+        }
+      }
+
+      await page.goto('/aulas');
+      const classroomRow = page.locator('tbody tr').filter({ hasText: classroomLabel });
+      if (await classroomRow.count()) {
+        page.once('dialog', (dialog) => dialog.accept());
+        await classroomRow.first().getByRole('button', { name: /eliminar/i }).click();
+        await expect(
+          page.locator('tbody tr').filter({ hasText: classroomLabel }),
+        ).toHaveCount(0);
+      }
+    }
   });
 
   test('validación: no permite enviar sin campos obligatorios', async ({

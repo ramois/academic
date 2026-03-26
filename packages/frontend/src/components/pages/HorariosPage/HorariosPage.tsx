@@ -13,6 +13,7 @@ import {
   deleteSchedule,
   type Schedule,
 } from '../../../services/scheduleService';
+import { trackEvent, trackPageView } from '../../../lib/analytics';
 
 type ScheduleRow = Schedule & {
   courseLabel: string;
@@ -54,6 +55,7 @@ export function HorariosPage() {
   };
 
   useEffect(() => {
+    trackPageView('/horarios', 'Listado de horarios');
     void loadData();
   }, []);
 
@@ -78,6 +80,9 @@ export function HorariosPage() {
 
     try {
       await deleteSchedule(row.id);
+      trackEvent('schedule_delete', {
+        schedule_id: row.id,
+      });
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar horario');
@@ -98,7 +103,13 @@ export function HorariosPage() {
               Administra los horarios y el aula asignada a cada curso.
             </p>
           </div>
-          <Button type="button" onClick={() => navigate('/horarios/registro')}>
+          <Button
+            type="button"
+            onClick={() => {
+              trackEvent('schedule_create_click');
+              navigate('/horarios/registro');
+            }}
+          >
             Agregar horario
           </Button>
         </div>
@@ -114,7 +125,10 @@ export function HorariosPage() {
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => navigate(`/horarios/${row.id}/editar`)}
+                  onClick={() => {
+                    trackEvent('schedule_edit_click', { schedule_id: row.id });
+                    navigate(`/horarios/${row.id}/editar`);
+                  }}
                   className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
                 >
                   Editar

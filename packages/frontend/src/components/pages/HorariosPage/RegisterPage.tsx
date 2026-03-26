@@ -9,6 +9,7 @@ import {
 import { MainLayout } from '../../templates/MainLayout';
 import { Input } from '../../atoms/Input';
 import { Button } from '../../atoms/Button';
+import { trackEvent, trackPageView } from '../../../lib/analytics';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -23,6 +24,10 @@ export function RegisterPage() {
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [classroomsLoading, setClassroomsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    trackPageView('/horarios/registro', 'Agregar horario');
+  }, []);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -83,10 +88,17 @@ export function RegisterPage() {
 
     setLoading(true);
     try {
+      const slot = `${dayOfWeek.trim()} ${startTime.trim()}-${endTime.trim()}`;
+
       await createSchedule({
         courseId: courseId.trim(),
-        slot: `${dayOfWeek.trim()} ${startTime.trim()}-${endTime.trim()}`,
+        slot,
         classroomId: classroomId.trim(),
+      });
+      trackEvent('schedule_create', {
+        course_id: courseId.trim(),
+        classroom_id: classroomId.trim(),
+        slot,
       });
       navigate('/horarios', { state: { registered: true } });
     } catch (err) {
@@ -229,7 +241,10 @@ export function RegisterPage() {
             </Button>
             <button
               type="button"
-              onClick={() => navigate('/horarios')}
+              onClick={() => {
+                trackEvent('schedule_create_cancel');
+                navigate('/horarios');
+              }}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-offset-slate-900"
             >
               Cancelar

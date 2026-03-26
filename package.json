@@ -10,6 +10,7 @@
     "dev": "npm run dev --workspaces --if-present",
     "dev:backend": "npm run start:dev -w packages/backend",
     "dev:frontend": "npm run dev -w packages/frontend",
+    "db:reset": "npm run migrations:drop -w packages/backend && npm run migrations:run -w packages/backend",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:cov -w packages/backend && npm run test:coverage -w packages/frontend",
     "test:e2e": "playwright test",

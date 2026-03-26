@@ -9,6 +9,7 @@ import {
   getClassrooms,
   type Classroom,
 } from '../../../services/classroomService';
+import { trackEvent, trackPageView } from '../../../lib/analytics';
 
 export function EditPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,10 @@ export function EditPage() {
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [classroomsLoading, setClassroomsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    trackPageView(`/horarios/${id ?? ''}/editar`, 'Editar horario');
+  }, [id]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -106,10 +111,18 @@ export function EditPage() {
 
     setLoading(true);
     try {
+      const slot = `${dayOfWeek.trim()} ${startTime.trim()}-${endTime.trim()}`;
+
       await updateSchedule(id, {
         courseId: courseId.trim(),
-        slot: `${dayOfWeek.trim()} ${startTime.trim()}-${endTime.trim()}`,
+        slot,
         classroomId: classroomId.trim(),
+      });
+      trackEvent('schedule_update', {
+        schedule_id: id,
+        course_id: courseId.trim(),
+        classroom_id: classroomId.trim(),
+        slot,
       });
       navigate('/horarios', { state: { updated: true } });
     } catch (err) {
@@ -265,7 +278,10 @@ export function EditPage() {
             </Button>
             <button
               type="button"
-              onClick={() => navigate('/horarios')}
+              onClick={() => {
+                trackEvent('schedule_edit_cancel', { schedule_id: id });
+                navigate('/horarios');
+              }}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-offset-slate-900"
             >
               Cancelar

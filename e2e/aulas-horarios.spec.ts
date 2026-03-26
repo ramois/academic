@@ -50,12 +50,87 @@ function buildCandidateSlots(): Array<{
   return candidates;
 }
 
-async function pickUnusedSlots(page: Page) {
-  const existingTexts = await page.locator('tbody tr').allTextContents();
+function toMinutes(value: string): number {
+  const [hour, minute] = value.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function overlaps(
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string,
+): boolean {
+  return toMinutes(startA) < toMinutes(endB) && toMinutes(endA) > toMinutes(startB);
+}
+
+const SLOT_REGEX =
+  /(Lunes|Martes|MiÃ©rcoles|Jueves|Viernes|SÃ¡bado|Domingo)\s+(\d{2}:\d{2})-(\d{2}:\d{2})/;
+
+async function setMaxRowsPerPage(page: Page) {
+  const pageSizeSelect = page.locator('select').filter({ has: page.getByRole('option', { name: '50' }) }).last();
+  if (await pageSizeSelect.count()) {
+    await pageSizeSelect.selectOption('50');
+  }
+}
+
+async function waitForScheduleTable(page: Page) {
+  await expect(page.locator('tbody tr').first()).toBeVisible();
+}
+
+async function collectScheduleTexts(page: Page): Promise<string[]> {
+  await waitForScheduleTable(page);
+  await setMaxRowsPerPage(page);
+
+  const texts: string[] = [];
+  const nextButton = page.getByRole('button', { name: /siguiente/i });
+
+  while (true) {
+    texts.push(...(await page.locator('tbody tr').allTextContents()));
+    if (await nextButton.isDisabled()) break;
+    await nextButton.click();
+  }
+
+  return texts;
+}
+
+async function goToRow(page: Page, ...texts: string[]) {
+  await waitForScheduleTable(page);
+  await setMaxRowsPerPage(page);
+
+  const nextButton = page.getByRole('button', { name: /siguiente/i });
+
+  while (true) {
+    let row = page.locator('tbody tr');
+    for (const text of texts) {
+      row = row.filter({ hasText: text });
+    }
+
+    if (await row.count()) {
+      await expect(row.first()).toBeVisible();
+      return row.first();
+    }
+
+    if (await nextButton.isDisabled()) break;
+    await nextButton.click();
+  }
+
+  throw new Error(`No se encontro la fila con los textos: ${texts.join(', ')}`);
+}
+
+async function pickUnusedSlots(page: Page, courseLabel: string) {
+  const existingTexts = await collectScheduleTexts(page);
   const candidates = buildCandidateSlots();
-  const available = candidates.filter(
-    (candidate) => !existingTexts.some((text) => text.includes(candidate.slot)),
-  );
+  const courseRows = existingTexts.filter((text) => text.includes(courseLabel));
+  const available = candidates.filter((candidate) => {
+    return !courseRows.some((text) => {
+      const match = text.match(SLOT_REGEX);
+      if (!match) return false;
+      const [, day, startTime, endTime] = match;
+      if (day !== candidate.day) return false;
+      return overlaps(candidate.start, candidate.end, startTime, endTime);
+    });
+  });
 
   if (available.length < 2) {
     throw new Error('No se encontraron suficientes horarios libres para el e2e');
@@ -100,7 +175,7 @@ test.describe('Aulas y horarios (e2e)', () => {
 
     await page.goto('/horarios');
     await expect(page.getByRole('heading', { name: /horarios/i })).toBeVisible();
-    const schedulePair = await pickUnusedSlots(page);
+    const schedulePair = await pickUnusedSlots(page, 'FIS - FISICA');
     await page.getByRole('button', { name: /agregar horario/i }).click();
     await expect(page).toHaveURL(/\/horarios\/registro/);
 
@@ -118,10 +193,7 @@ test.describe('Aulas y horarios (e2e)', () => {
 
     await expect(page).toHaveURL(/\/horarios$/);
 
-    const scheduleRow = page
-      .locator('tbody tr')
-      .filter({ hasText: schedulePair.created.slot })
-      .filter({ hasText: code1 });
+    const scheduleRow = await goToRow(page, schedulePair.created.slot, code1);
     await expect(scheduleRow).toBeVisible();
 
     await scheduleRow.getByRole('button', { name: /editar/i }).click();
@@ -139,10 +211,7 @@ test.describe('Aulas y horarios (e2e)', () => {
 
     await expect(page).toHaveURL(/\/horarios$/);
 
-    const updatedRow = page
-      .locator('tbody tr')
-      .filter({ hasText: schedulePair.updated.slot })
-      .filter({ hasText: code2 });
+    const updatedRow = await goToRow(page, schedulePair.updated.slot, code2);
     await expect(updatedRow).toBeVisible();
 
     page.once('dialog', (dialog) => dialog.accept());
